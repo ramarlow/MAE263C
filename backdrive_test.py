@@ -24,13 +24,10 @@ class UDP_Client:
     def __del__(self):
         self.close()
 
+
 port_u2d2 = "COM10"
-port_arduino = "COM5"
 try:
-    motors = MotorArr(port_u2d2, 57600, [6])
-except: pass
-try:
-    arduino = serial.Serial(port_arduino, 115200, timeout=0.01, write_timeout=0.1)
+    motors = MotorArr(port_u2d2, 57600, [1, 2])
 except: pass
 
 motors.torque_disable()
@@ -41,37 +38,23 @@ data_out = UDP_Client()
 err_hist = np.zeros(1) # buffer of past load values
 err_idx = 0
 load_cell = 0
-k_des = -0.4
-ang_target = 1500
+PWM_gain=-30000
+
 try:
     while 1:
-        try:
-            if arduino.in_waiting:
-                load_cell = int(arduino.readline().decode('utf-8'))
-                arduino.reset_input_buffer()
-                # print(load_cell)
-
-                err_hist[err_idx]=load_cell # moving avg filter
-                err_idx+=1
-                err_idx%=len(err_hist)
-                avg_load=np.mean(err_hist)
-        except:
-            print("exception")
-            pass
+        load_torques = motors.get_loads()
         
-        ang = int(motors.get_positions()[0])
-        f_des = k_des*(ang-ang_target)
+        err_hist[err_idx]=load_torques[0] # moving avg filter
+        err_idx+=1
+        err_idx%=len(err_hist)
+        avg_load=np.mean(err_hist)
 
-        motor_PWM = 5000/(ang-1800)
-
-        '''
-        print(ang)
-        print(motor_PWM)
-        '''
-
-        # motor_PWM = int(f_des)
-        motors.apply_write_table("Goal_PWM",[motor_PWM])
-        data_out.send({'angle':ang,'loadcell':load_cell,'PWM':motor_PWM})
+        PWM_target = avg_load*PWM_gain
+        motors.apply_write_table("Goal_PWM",[0,PWM_target])
+        data_out.send({
+            'load0':load_torques[0],
+            'load1':load_torques[1],
+            'PWM':PWM_target})
         time.sleep(0.0001)
 finally:
     motors.torque_disable()
