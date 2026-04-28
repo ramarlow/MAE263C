@@ -138,19 +138,29 @@ def IK_numerical(Pe_des,q_guess,tol=1e-3,maxiters=100):
 
     for i in range(maxiters):   # newton-raphson iteration to find a solution
         
-        Pe_curr = FK(q_guess) # fk to find end position given guess
+        Pe_curr = FK(q_guess)[0] # fk to find end position given guess
         err = Pe_curr - Pe_des # positional error
 
         J = Jacobian(q_guess) # space jacobian of manipulator in current configuration
 
         try:
-            dq = 0.2 * np.linalg.lstsq(J,err)[0] # scale solution to mitigate overshooting
-        except np.linalg.LinAlgError:
+            dq = 0.2 * np.linalg.lstsq(J,err,rcond=None)[0] # scale solution to mitigate overshooting
+        except np.linalg.LinAlgError as e:
+            # print(e)
             raise np.linalg.LinAlgError(f'Singularity encountered while solving at iteration {i}')
 
-        q_guess -= dq # adjust guess with correction factor
+        q_guess = q_guess - dq # adjust guess with correction factor
 
         if np.linalg.norm(err) < tol: # solution converged to within tolerance
             return q_guess
         
     raise RuntimeError('solution failed to converge :(') # max iters reached, complain
+
+
+# testing
+eepos = FK(np.pi/3, 2*np.pi/3)[0]
+pose_IK = IK(eepos)
+pose_IK_numerical = IK_numerical(eepos, np.array([1,2]).T)
+
+print(Jacobian(pose_IK))
+print(eepos, pose_IK, pose_IK_numerical)
