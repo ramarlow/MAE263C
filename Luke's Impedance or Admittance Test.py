@@ -1,12 +1,12 @@
 from dynamixel_sdk import *
 import time
 
-PORT = "COM7"
+PORT = "COM10"
 BAUD = 57600
 IDS = [5, 6]
 
-K = 5.0  # PWM per degree, tune this
-CENTERS_DEG = {5: 180.0, 6: 180.0}  # center angles in degrees
+K = 20.0  # PWM per degree, tune this
+CENTERS_DEG = {5: 240.0, 6: 110.0}  # center angles in degrees
 
 def ticks_to_deg(ticks):
     return ticks * 360.0 / 4096.0
@@ -26,6 +26,7 @@ try:
     while True:
         for id in IDS:
             pos, _, _ = packet.read4ByteTxRx(port, id, 132)
+            # print(pos)
             if pos > 0x7FFFFFFF:
                 pos -= 0x100000000
 
