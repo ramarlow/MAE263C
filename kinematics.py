@@ -120,11 +120,20 @@ def Jacobian(q, q2=None):
     d1h = -b*d1b/h                                              # (16)
     d5h = -b*d5b/h
 
-    d1dy3 = -h/d*(d1dx4-d1dx2)-(d1h*d-d1d*h)/(d**2)*(x4_x2)     # (21)
-    d5dy3 = -h/d*(d5dx4-d5dx2)-(d5h*d-d5d*h)/(d**2)*(x4_x2)
+    d1dyh = d1dy2 + (d1b*d - d1d*b)/d**2 * y4_y2 + b/d*(d1dy4 - d1dy2) # (19)
+    d5dyh = d5dy2 + (d5b*d - d5d*b)/d**2 * y4_y2 + b/d*(d5dy4 - d5dy2) 
 
-    d1dx3 = h/d*(d1dy4-d1dy2)+(d1h*d-d1d*h)/(d**2)*(y4_y2)      # (22)
-    d5dx3 = h/d*(d5dy4-d5dy2)+(d5h*d-d5d*h)/(d**2)*(y4_y2)
+    # (20) - missing!
+    d1dxh = d1dx2 + (d1b*d - d1d*b)/d**2 * x4_x2 + b/d*(d1dx4 - d1dx2) # (20)
+    d5dxh = d5dx2 + (d5b*d - d5d*b)/d**2 * x4_x2 + b/d*(d5dx4 - d5dx2)
+
+    # (21) corrected
+    d1dy3 = d1dyh - h/d*(d1dx4 - d1dx2) - (d1h*d - d1d*h)/d**2 * x4_x2 # (21)
+    d5dy3 = d5dyh - h/d*(d5dx4 - d5dx2) - (d5h*d - d5d*h)/d**2 * x4_x2
+
+    # (22) corrected
+    d1dx3 = d1dxh + h/d*(d1dy4 - d1dy2) + (d1h*d - d1d*h)/d**2 * y4_y2 # (22)
+    d5dx3 = d5dxh + h/d*(d5dy4 - d5dy2) + (d5h*d - d5d*h)/d**2 * y4_y2
 
     return np.array([                                           # (13)
         [d1dx3, d5dx3],
