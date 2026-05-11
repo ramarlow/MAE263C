@@ -38,9 +38,9 @@ def FK(q, q2=None):
     else:
         q1 = q
 
-    P2 = np.array([a[1]*np.cos(q1)+a[5]/2,          # (1)
+    P2 = np.array([a[1]*np.cos(q1)-a[5]/2,          # (1)
                    a[1]*np.sin(q1)]).T
-    P4 = np.array([a[4]*np.cos(q2)-a[5]/2,          # (2)
+    P4 = np.array([a[4]*np.cos(q2)+a[5]/2,          # (2)
                    a[4]*np.sin(q2)]).T
     
     P4_P2 = np.linalg.norm(P4-P2)
@@ -48,8 +48,8 @@ def FK(q, q2=None):
     Ph = P2 + P2_Ph/P4_P2 * (P4-P2)                 # (4)
     P3_Ph = np.sqrt(a[2]**2-P2_Ph**2)               # (5)
 
-    xe = Ph[0] + P3_Ph/P4_P2 * (P4[1]-P2[1])        # (6)
-    ye = Ph[1] + P3_Ph/P4_P2 * (P4[0]-P2[0])        # (7)
+    xe = Ph[0] - P3_Ph * (P4[1]-P2[1])/P4_P2        # (6)
+    ye = Ph[1] + P3_Ph * (P4[0]-P2[0])/P4_P2        # (7)
 
     return (np.array([xe,ye]).T, P2, P4, Ph)
 
@@ -158,9 +158,11 @@ def IK_numerical(Pe_des,q_guess,tol=1e-3,maxiters=100):
 
 
 # testing
+'''
 eepos = FK(np.pi/3, 2*np.pi/3)[0]
 pose_IK = IK(eepos)
 pose_IK_numerical = IK_numerical(eepos, np.array([1,2]).T)
 
 print(Jacobian(pose_IK))
 print(eepos, pose_IK, pose_IK_numerical)
+'''
