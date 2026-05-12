@@ -75,8 +75,8 @@ def IK(Pe, ye=None):
         (a[4]**2-a[3]**2+P5_Pe**2) / (2*a[4]*P5_Pe)   )
     beta2 = np.arctan2(ye, a[5]/2+xe)                       # (12)
 
-    q1 = np.pi - alpha1 - beta1                             # (8)
-    q2 = alpha2 + beta2
+    q2 = np.pi - alpha1 - beta1                             # (8)
+    q1 = alpha2 + beta2
 
     return np.array([q1,q2]).T
 
@@ -92,15 +92,18 @@ def Jacobian(q, q2=None):
     else:
         q1 = q
 
+
     Pe, P2, P4, Ph = FK(q1,q2)
     d = np.linalg.norm(P2-P4)
     b = np.linalg.norm(P2-Ph)
     h = np.linalg.norm(Pe-Ph)
 
-    d1dx2 = a[1]*np.sin(q1)             # (14)
+    #q1, q2 = q2, q1
+
+    d1dx2 = -a[1]*np.sin(q1)             # (14)
     d1dy2 = a[1]*np.cos(q1)
 
-    d5dx4 = a[4]*np.sin(q2)             # (15)
+    d5dx4 = -a[4]*np.sin(q2)             # (15)
     d5dy4 = a[4]*np.cos(q2)
 
     d1dy4 = 0                           # (16)
@@ -111,11 +114,11 @@ def Jacobian(q, q2=None):
     x4_x2 = P4[0]-P2[0]
     y4_y2 = P4[1]-P2[1]
 
-    d1d = (x4_x2*(d1dx4-d1dx2)+y4_y2*(d1dy4-d1dy2))/d           # (17)
-    d5d = (x4_x2*(d5dx4-d5dx2)+y4_y2*(d5dy4-d5dy2))/d
+    d1d = (x4_x2*(d1dx4 - d1dx2) + y4_y2*(d1dy4 - d1dy2))/d     # (17)
+    d5d = (x4_x2*(d5dx4 - d5dx2) + y4_y2*(d5dy4 - d5dy2))/d
 
-    d1b = d1d - (d1d*(a[2]**2-a[3]**2+d**2))/(2*d**2)           # (18)
-    d5b = d5d - (d5d*(a[2]**2-a[3]**2+d**2))/(2*d**2)
+    d1b = d1d - (d1d*(a[2]**2 - a[3]**2 + d**2))/(2*d**2)       # (18)
+    d5b = d5d - (d5d*(a[2]**2 - a[3]**2 + d**2))/(2*d**2)
 
     d1h = -b*d1b/h                                              # (16)
     d5h = -b*d5b/h
@@ -123,34 +126,33 @@ def Jacobian(q, q2=None):
     d1dyh = d1dy2 + (d1b*d - d1d*b)/d**2 * y4_y2 + b/d*(d1dy4 - d1dy2) # (19)
     d5dyh = d5dy2 + (d5b*d - d5d*b)/d**2 * y4_y2 + b/d*(d5dy4 - d5dy2) 
 
-    # (20) - missing!
     d1dxh = d1dx2 + (d1b*d - d1d*b)/d**2 * x4_x2 + b/d*(d1dx4 - d1dx2) # (20)
     d5dxh = d5dx2 + (d5b*d - d5d*b)/d**2 * x4_x2 + b/d*(d5dx4 - d5dx2)
 
-    # (21) corrected
     d1dy3 = d1dyh - h/d*(d1dx4 - d1dx2) - (d1h*d - d1d*h)/d**2 * x4_x2 # (21)
     d5dy3 = d5dyh - h/d*(d5dx4 - d5dx2) - (d5h*d - d5d*h)/d**2 * x4_x2
 
-    # (22) corrected
     d1dx3 = d1dxh + h/d*(d1dy4 - d1dy2) + (d1h*d - d1d*h)/d**2 * y4_y2 # (22)
     d5dx3 = d5dxh + h/d*(d5dy4 - d5dy2) + (d5h*d - d5d*h)/d**2 * y4_y2
 
     return np.array([                                           # (13)
-        [d1dx3, d5dx3],
-        [d1dy3, d5dy3]])
+        [d5dx3, d1dx3],
+        [d5dy3, d1dy3]])
 
 
-def IK_numerical(Pe_des,q_guess,tol=1e-3,maxiters=100):
+def IK_numerical(Pe_des,q_guess=np.array([np.pi/2,np.pi/2]).T,tol=1e-3,maxiters=100):
     '''
     ik using newton-raphson iteration to converge toward a solution
     '''
 
     for i in range(maxiters):   # newton-raphson iteration to find a solution
-        
+        # print(q_guess)
         Pe_curr = FK(q_guess)[0] # fk to find end position given guess
+        # print(Pe_curr)
         err = Pe_curr - Pe_des # positional error
+        # print(err)
 
-        J = Jacobian(q_guess) # space jacobian of manipulator in current configuration
+        J = Jacobian(q_guess) # geometric jacobian of manipulator in current configuration
 
         try:
             dq = 0.2 * np.linalg.lstsq(J,err,rcond=None)[0] # scale solution to mitigate overshooting
@@ -167,11 +169,12 @@ def IK_numerical(Pe_des,q_guess,tol=1e-3,maxiters=100):
 
 
 # testing
-'''
-eepos = FK(np.pi/3, 2*np.pi/3)[0]
+
+eepos = FK(np.pi/2, np.pi/2)[0]
+print(eepos)
 pose_IK = IK(eepos)
-pose_IK_numerical = IK_numerical(eepos, np.array([1,2]).T)
+print(pose_IK)
+pose_IK_numerical = IK_numerical(eepos, np.array([1.6,1.6]).T, 1e-3, 300)
 
 print(Jacobian(pose_IK))
 print(eepos, pose_IK, pose_IK_numerical)
-'''

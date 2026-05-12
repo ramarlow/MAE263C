@@ -1,7 +1,7 @@
 from dynamixel_sdk import *
 import numpy as np
 from forward_kinematics import forward_kinematics
-from kinematics import FK, IK
+from kinematics import FK, IK, IK_numerical, Jacobian
 import time
 import socket
 from json import dumps
@@ -68,15 +68,21 @@ try:
         theta2 = np.pi-q[1]
         eepos = forward_kinematics(theta1, theta2, L1, L2, D)
         eepos2, P2, P4, Ph = FK(theta1,theta2)
-        ikq = IK(eepos)
+        ikq = IK(eepos2)
+        iknq = IK_numerical(eepos2)
         # eepos=(0,0)
+        J = Jacobian(theta1,theta2)
+        # print(J)
         data_out.send({
-            'q1':float(q[0]),'q2':float(q[1]),
+            'q1':float(theta1),'q2':float(theta2),
             'q1_ik':float(ikq[0]),'q2_ik':float(ikq[1]),
+            'q1_ikn':float(iknq[0]),'q2_ikn':float(iknq[1]),
             'x':float(eepos[0]-0.1),'y':float(eepos[1]),
             'x_ee':float(eepos2[0]/1000),'y_ee':float(eepos2[1]/1000),
             'x_p2':float(P2[0]/1000),'y_p2':float(P2[1]/1000),
             'x_p4':float(P4[0]/1000),'y_p4':float(P4[1]/1000),
-            'x_ph':float(Ph[0]/1000),'y_ph':float(Ph[1]/1000)})
+            'x_ph':float(Ph[0]/1000),'y_ph':float(Ph[1]/1000),
+            'dexd1':float((J[0,0]+eepos2[0])/1e3),'deyd1':float((J[1,0]+eepos2[1])/1e3),
+            'dexd2':float((J[0,1]+eepos2[0])/1e3),'deyd2':float((J[1,1]+eepos2[1])/1e3)})
 except:
     pass
