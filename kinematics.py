@@ -170,6 +170,7 @@ def IK_numerical(Pe_des,q_guess=np.array([np.pi/2,np.pi/2]).T,tol=1e-3,maxiters=
 
 # testing
 
+'''
 eepos = FK(np.pi/2, np.pi/2)[0]
 print(eepos)
 pose_IK = IK(eepos)
@@ -178,3 +179,4 @@ pose_IK_numerical = IK_numerical(eepos, np.array([1.6,1.6]).T, 1e-3, 300)
 
 print(Jacobian(pose_IK))
 print(eepos, pose_IK, pose_IK_numerical)
+'''
