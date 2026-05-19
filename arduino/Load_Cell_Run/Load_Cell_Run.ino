@@ -46,7 +46,7 @@ void setup() {
   scale1.tare();
 
   // Optional header for CSV logging
-  Serial.println("grams");
+  // Serial.println("grams");
 }
 
 void loop() {

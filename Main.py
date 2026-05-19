@@ -29,7 +29,7 @@ class UDP_Client:
 
 data_out = UDP_Client()
 PORT_DYN = "COM10"
-PORT_ARD = "COM12"
+PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]
 
@@ -45,12 +45,12 @@ except:
     print('dynamixels not connected, can\'t really run')
     raise NotImplementedError('maybe we can find some way to run in simulation instead? idk')
 
+loads = [0,0]
 try:
     arduino = serial.Serial(PORT_ARD, 57600, timeout=0.01, write_timeout=0.1)
 except:
     print('no arduino connected, running without load cells')
-    arduino = None 
-    loads = [0,0]
+    arduino = None
 
 controller = PDController(setpoint=[.1, 0.350], 
                           kp=50.0, 
@@ -81,11 +81,6 @@ try:
                 theta2 = np.pi-angle
             else:
                 theta1 = 2*np.pi-angle
-
-        if arduino != None and arduino.in_waiting:
-                loads = arduino.readline().decode('utf-8').split('\t')
-                arduino.reset_input_buffer()
-                # print(load_cell)
 
         pos = forward_kinematics(theta1, theta2, L1, L2, D)
         # eepos2, P2, P4, Ph = FK(theta1,theta2)
