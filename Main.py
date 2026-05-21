@@ -3,29 +3,8 @@ from forward_kinematics import forward_kinematics
 from kinematics import Jacobian, FK
 from operation_space_PID import PDController
 import numpy as np
-import socket
-from json import dumps
+import dynamics, data_io
 import serial, serial.threaded
-
-class UDP_Client:
-    def __init__(self, host: str = "127.0.0.1", port: int = 9870):
-        self._UDP_addr = (host, port)
-        self._UDP_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-
-    def send(self, data: dict):
-        '''send data to UDP server, used for plotting with plotjuggler'''
-        try:
-            data["time"] = round(time.time(), 3)
-            # print(data)
-            self._UDP_sock.sendto(bytes(dumps(data),encoding='utf-8'), self._UDP_addr)
-        except Exception as e:
-            print(f'Send failed: {e}')
-
-    def close(self):
-        self._UDP_sock.close()
-
-    def __del__(self):
-        self.close()
 
 class StoreLoads(serial.threaded.LineReader):
     def handle_line(self, line):
@@ -33,11 +12,12 @@ class StoreLoads(serial.threaded.LineReader):
         loads = np.array([float(load) for load in line.split('\t')])
         # print(loads)
 
-data_out = UDP_Client()
+data_out = data_io.UDP_Client()
 PORT_DYN = "COM10"
 PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]
+loads = np.zeros((2,))
 
 def ticks_to_deg(ticks):
     return ticks * 2 * np.pi / 4096.0
@@ -51,7 +31,6 @@ except:
     print('dynamixels not connected, can\'t really run')
     raise NotImplementedError('maybe we can find some way to run in simulation instead? idk')
 
-loads = np.zeros((2,))
 try:
     arduino = serial.Serial(PORT_ARD, 57600, timeout=0.01, write_timeout=0.1)
     reader = serial.threaded.ReaderThread(arduino, StoreLoads)
