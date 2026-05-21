@@ -5,7 +5,7 @@ from operation_space_PID import PDController
 import numpy as np
 import socket
 from json import dumps
-
+import serial, serial.threaded
 
 class UDP_Client:
     def __init__(self, host: str = "127.0.0.1", port: int = 9870):
@@ -27,6 +27,12 @@ class UDP_Client:
     def __del__(self):
         self.close()
 
+class StoreLoads(serial.threaded.LineReader):
+    def handle_line(self, line):
+        global loads
+        loads = np.array([float(load) for load in line.split('\t')])
+        # print(loads)
+
 data_out = UDP_Client()
 PORT_DYN = "COM10"
 PORT_ARD = "COM13"
@@ -45,9 +51,11 @@ except:
     print('dynamixels not connected, can\'t really run')
     raise NotImplementedError('maybe we can find some way to run in simulation instead? idk')
 
-loads = [0,0]
+loads = np.zeros((2,))
 try:
     arduino = serial.Serial(PORT_ARD, 57600, timeout=0.01, write_timeout=0.1)
+    reader = serial.threaded.ReaderThread(arduino, StoreLoads)
+    reader.start()
 except:
     print('no arduino connected, running without load cells')
     arduino = None
