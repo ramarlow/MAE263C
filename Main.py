@@ -40,8 +40,8 @@ except:
     arduino = None
 
 controller = PDController(setpoint=[.1, 0.350], 
-                          kp=50.0, 
-                          kd=0.,#50.0, 
+                          kp=20.0, 
+                          kd=0.5,#50.0, 
                           dt=0.01)
 
 for id in IDS:
@@ -78,6 +78,8 @@ try:
         
         tau = Jacobian(theta1,theta2).T@force.T
 
+        f_cells = -dynamics.F_ee(loads, np.array([theta1,theta2]))
+
         K_PWM = 0.8
 
         packet.write2ByteTxRx(port, 5, 100, int(tau[0]*-K_PWM) & 0xFFFF)
@@ -90,6 +92,7 @@ try:
                 'fx':float(-force[0]),'fy':float(force[1]), # desired ee force
                 'tau1':float(tau[0]),'tau2':float(tau[1]),  # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),  # load cell readings
+                'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
                 })
 finally:
     for id in IDS:
