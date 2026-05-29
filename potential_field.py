@@ -27,13 +27,13 @@ import matplotlib.pyplot as plt
 
 class BoxField:
     """
-    Square potential-energy field centred at `center` with half-side `half_width`.
+    Square potential-energy field centered at `center` with half-side `half_width`.
 
     Parameters
     ----------
-    center     : array-like (2,)   centre of the box in metres
+    center     : array-like (2,)   center of the box in metres
     half_width : float             half-side-length in metres
-                                   (0.025 for a 5 cm × 5 cm box)
+                                   (0.025 for a 5 cm x 5 cm box)
     k          : float             wall stiffness [N/m]
     """
 
@@ -119,12 +119,12 @@ class BoxField:
         Parameters
         ----------
         ax         : existing matplotlib Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3× half_width around centre
+        xlim, ylim : (min, max) tuples; default = 3x half_width around center
         n          : grid resolution
 
         Returns
         -------
-        fig, ax  –  energy colour-map figure
+        fig, ax - energy colour-map figure
         """
         cx, cy = self.center
         w = self.w
@@ -150,7 +150,7 @@ class BoxField:
         ax.set_xlabel('x  [m]')
         ax.set_ylabel('y  [m]')
         ax.set_title(
-            f'Energy field   centre={tuple(self.center.round(4))}  '
+            f'Energy field   center={tuple(self.center.round(4))}  '
             f'half_width={w} m   k={self.k} N/m'
         )
         ax.legend(loc='upper right', fontsize=8)
@@ -159,17 +159,17 @@ class BoxField:
     # ------------------------------------------------------------------
     def plot_forces(self, ax=None, xlim=None, ylim=None, n=24):
         """
-        2-D quiver plot of F = -∇U on an n×n grid.
+        2-D quiver plot of F = -∇U on an nxn grid.
 
         Parameters
         ----------
         ax         : existing Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3× half_width around centre
+        xlim, ylim : (min, max) tuples; default = 3x half_width around center
         n          : quiver grid resolution (arrows per axis)
 
         Returns
         -------
-        fig, ax  –  force quiver figure
+        fig, ax - force quiver figure
         """
         cx, cy = self.center
         w = self.w
@@ -202,7 +202,7 @@ class BoxField:
         ax.set_xlabel('x  [m]')
         ax.set_ylabel('y  [m]')
         ax.set_title(
-            f'Force field  F = −∇U   centre={tuple(self.center.round(4))}  '
+            f'Force field  F = −∇U   center={tuple(self.center.round(4))}  '
             f'half_width={w} m   k={self.k} N/m'
         )
         ax.legend(loc='upper right', fontsize=8)
@@ -210,14 +210,14 @@ class BoxField:
 
     # ------------------------------------------------------------------
     def _draw_box(self, ax):
-        """Overlay the box boundary and centre marker on an existing Axes."""
+        """Overlay the box boundary and center marker on an existing Axes."""
         cx, cy = self.center
         w = self.w
         rect = plt.Rectangle((cx - w, cy - w), 2*w, 2*w,
                               edgecolor='lime', facecolor='none',
                               linewidth=2, linestyle='--', label='wall')
         ax.add_patch(rect)
-        ax.plot(cx, cy, 'g+', markersize=10, label='centre')
+        ax.plot(cx, cy, 'g+', markersize=10, label='center')
 
 
 # ======================================================================
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     field = BoxField(center=[0.10, 0.35], half_width=0.025, k=200.0)
 
     print('--- Force spot-checks (callable interface) ---')
-    print(f'  centre      (0.10, 0.35) → {field(0.10, 0.35)}   (expect [0, 0])')
+    print(f'  center      (0.10, 0.35) → {field(0.10, 0.35)}   (expect [0, 0])')
     print(f'  outside R   (0.13, 0.35) → {field(0.13, 0.35)}   (expect Fx < 0)')
     print(f'  outside L   (0.07, 0.35) → {field(0.07, 0.35)}   (expect Fx > 0)')
     print(f'  outside top (0.10, 0.38) → {field(0.10, 0.38)}   (expect Fy < 0)')
