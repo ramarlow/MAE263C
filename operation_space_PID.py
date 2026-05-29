@@ -1,5 +1,5 @@
 import numpy as np
-from time import time
+from time import time, sleep
 
 class PDController:
     def __init__(self, setpoint, kp=50.0, kd=10.0, dt=0.01):
@@ -17,9 +17,10 @@ class PDController:
         Returns force vector [Fx, Fy] in Newtons.
         """
         current_pos = np.array([x, y], dtype=float)
-        current_t = time()
-        self.dt = current_t - self.prev_t
-        self.prev_t = current_t
+        #current_t = time()
+        #self.dt = current_t - self.prev_t
+        #self.prev_t = current_t
+        sleep(self.dt)
 
         # Estimate velocity from position difference if not provided externally
         if self.prev_pos is not None:
