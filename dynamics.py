@@ -19,4 +19,8 @@ def F_ee(f, q):
     u_54 = np.array([np.cos(q2),np.sin(q2)])
     t_4 = np.array([u_54[0],-u_54[1]])
 
-    return f1*t_2 + f2*t_4
+    f_res = f1*t_2 + f2*t_4
+    f_res[0] *= -2. # scale to deal with isotropy and flipping :(
+    f_res /= 600    # arbitrary calibration factor
+
+    return f_res
