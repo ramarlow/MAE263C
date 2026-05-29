@@ -2,6 +2,7 @@ from dynamixel_sdk import *
 from forward_kinematics import forward_kinematics
 from kinematics import Jacobian, FK
 from operation_space_PID import PDController
+from potential_field import BoxField
 import numpy as np
 import dynamics, data_io
 import serial, serial.threaded
@@ -9,7 +10,10 @@ import serial, serial.threaded
 class StoreLoads(serial.threaded.LineReader):
     def handle_line(self, line):
         global loads
-        loads = np.array([float(load) for load in line.split('\t')])
+        try:
+            loads = np.array([float(load) for load in line.split('\t')])
+        except:
+            print('receiving error')
         # print(loads)
 
 data_out = data_io.UDP_Client()
@@ -39,10 +43,7 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = PDController(setpoint=[.1, 0.350], 
-                          kp=20.0, 
-                          kd=0.5,#50.0, 
-                          dt=0.01)
+controller = BoxField(center=[0.10, 0.35], half_width=0.025, k=100.0)
 
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
@@ -87,11 +88,11 @@ try:
 
         print(f'force:{force}, torques:{tau}, PWMs:{tau*K_PWM}')
         data_out.send({
-                'q1':float(theta1),'q2':float(theta2),      # joint angles
-                'ex':float(-pos[0]),'ey':float(pos[1]),     # fk ee pos
-                'fx':float(-force[0]),'fy':float(force[1]), # desired ee force
-                'tau1':float(tau[0]),'tau2':float(tau[1]),  # desired joint torques
-                'f1':float(loads[0]),'f2':float(loads[1]),  # load cell readings
+                'q1':float(theta1),'q2':float(theta2),              # joint angles
+                'ex':float(-pos[0]),'ey':float(pos[1]),             # fk ee pos
+                'fx_des':float(-force[0]),'fy_des':float(force[1]), # desired ee force
+                'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
+                'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
                 })
 finally:
