@@ -50,10 +50,11 @@ for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
     packet.write1ByteTxRx(port, id, 64, 1)   # torque enable
 
-
 D = .200
 L1 = .220
 L2 = .250
+m1 = 50/1000 #kg
+m2 = 58.25/1000 #kg
 
 K_D = np.diag([1.0,1.0]) #Cartesian Velocity Damping
 D_on = True #Boolean for derivative term on/off
@@ -100,7 +101,7 @@ try:
         if D_on:
             if M_on:
                 #Calculating M matrix
-                M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J)
+                M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix, second term avoids singularities
                 tau = J.T @ Lambda @ (force.T - K_D @ J @ theta_dot.T)
@@ -109,7 +110,7 @@ try:
         else:
             if M_on:
                 #Calculating M matrix
-                M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J)
+                M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix
                 tau = J.T @ Lambda @force.T
