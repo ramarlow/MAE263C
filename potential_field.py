@@ -6,14 +6,14 @@ Energy-based force fields for haptic rendering.
 The field is a scalar potential  U(x, y).
 Forces are derived as  F = -∇U,  guaranteeing the field never injects energy.
 
-Interior of the box  →  U = 0   (flat valley, zero force)
-Outside a wall       →  U = k/2 · p²   where p is penetration depth
-                         F = k · p · n̂  directed back inward
+Interior of the circle  →  U = 0      (flat valley, zero force)
+Outside the wall        →  U = k · p  where p is radial penetration depth
+                            F = k · (-r̂)  constant magnitude, directed radially inward
 
 Usage in Main.py
 ----------------
-    from potential_field import BoxField
-    field = BoxField(center=[0.10, 0.35], half_width=0.025, k=200.0)
+    from potential_field import CircleField
+    field = CircleField(center=[0.10, 0.35], radius=0.025, k=200.0)
     ...
     force = field(pos[0], pos[1])              # callable — returns np.array([Fx, Fy])
     force = field(pos[0], pos[1], plots=True)  # same, and saves field_energy/forces.png
@@ -25,21 +25,20 @@ matplotlib.use('Agg')          # no GUI / no tkinter needed
 import matplotlib.pyplot as plt
 
 
-class BoxField:
+class CircleField:
     """
-    Square potential-energy field centered at `center` with half-side `half_width`.
+    Circular potential-energy field centered at `center` with `radius`.
 
     Parameters
     ----------
-    center     : array-like (2,)   center of the box in metres
-    half_width : float             half-side-length in metres
-                                   (0.025 for a 5 cm x 5 cm box)
-    k          : float             wall stiffness [N/m]
+    center : array-like (2,)   center of the circle in metres
+    radius : float             radius of the safe zone in metres
+    k      : float             wall stiffness [N/m]
     """
 
-    def __init__(self, center, half_width, k=200.0):
+    def __init__(self, center, radius, k=200.0):
         self.center = np.asarray(center, dtype=float)
-        self.w = float(half_width)
+        self.r = float(radius)
         self.k = float(k)
 
     # ------------------------------------------------------------------
@@ -53,28 +52,23 @@ class BoxField:
         """
         x, y = np.asarray(x, float), np.asarray(y, float)
         cx, cy = self.center
-        w = self.w
-        pL = np.maximum(0.0, (cx - w) - x)   # left-wall penetration
-        pR = np.maximum(0.0, x - (cx + w))   # right-wall penetration
-        pB = np.maximum(0.0, (cy - w) - y)   # bottom-wall penetration
-        pT = np.maximum(0.0, y - (cy + w))   # top-wall penetration
-        return 0.5 * self.k * (pL**2 + pR**2 + pB**2 + pT**2)
+        dist = np.sqrt((x - cx)**2 + (y - cy)**2)
+        p = np.maximum(0.0, dist - self.r)
+        return self.k * p   # U = k·p  (linear → constant-force wall)
 
     def force(self, x, y):
         """
         2D force vector F = -∇U at (x, y) [N].
         Returns np.array([Fx, Fy]).
-        Inside the box F = [0, 0].
+        Inside the circle F = [0, 0]; outside, constant magnitude k radially inward.
         """
         cx, cy = self.center
-        w = self.w
-        pL = max(0.0, (cx - w) - x)   # left
-        pR = max(0.0, x - (cx + w))   # right
-        pB = max(0.0, (cy - w) - y)   # bottom
-        pT = max(0.0, y - (cy + w))   # top
-        Fx = self.k * (pL - pR)       # left pushes +x, right pushes -x
-        Fy = self.k * (pB - pT)       # bottom pushes +y, top pushes -y
-        return np.array([Fx, Fy])
+        dx, dy = x - cx, y - cy
+        dist = np.sqrt(dx**2 + dy**2)
+        if dist <= self.r or dist == 0.0:
+            return np.array([0.0, 0.0])
+        r_hat = np.array([dx, dy]) / dist
+        return -self.k * r_hat   # constant magnitude, radially inward
 
     def __call__(self, x, y, plots=False):
         """
@@ -119,7 +113,7 @@ class BoxField:
         Parameters
         ----------
         ax         : existing matplotlib Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3x half_width around center
+        xlim, ylim : (min, max) tuples; default = 3x radius around center
         n          : grid resolution
 
         Returns
@@ -127,8 +121,8 @@ class BoxField:
         fig, ax - energy colour-map figure
         """
         cx, cy = self.center
-        w = self.w
-        pad = 3.0 * w
+        r = self.r
+        pad = 3.0 * r
         xlim = xlim or (cx - pad, cx + pad)
         ylim = ylim or (cy - pad, cy + pad)
 
@@ -145,13 +139,13 @@ class BoxField:
         pcm = ax.pcolormesh(X, Y, U, shading='auto', cmap='hot_r')
         fig.colorbar(pcm, ax=ax, label='Energy U  [J]')
 
-        self._draw_box(ax)
+        self._draw_circle(ax)
         ax.set_aspect('equal')
         ax.set_xlabel('x  [m]')
         ax.set_ylabel('y  [m]')
         ax.set_title(
             f'Energy field   center={tuple(self.center.round(4))}  '
-            f'half_width={w} m   k={self.k} N/m'
+            f'radius={r} m   k={self.k} N/m'
         )
         ax.legend(loc='upper right', fontsize=8)
         return fig, ax
@@ -164,7 +158,7 @@ class BoxField:
         Parameters
         ----------
         ax         : existing Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3x half_width around center
+        xlim, ylim : (min, max) tuples; default = 3x radius around center
         n          : quiver grid resolution (arrows per axis)
 
         Returns
@@ -172,8 +166,8 @@ class BoxField:
         fig, ax - force quiver figure
         """
         cx, cy = self.center
-        w = self.w
-        pad = 3.0 * w
+        r = self.r
+        pad = 3.0 * r
         xlim = xlim or (cx - pad, cx + pad)
         ylim = ylim or (cy - pad, cy + pad)
 
@@ -194,29 +188,28 @@ class BoxField:
         # Colour arrows by magnitude so zero-force interior is visually distinct
         q = ax.quiver(Xq, Yq, Fxq, Fyq, mag,
                       cmap='viridis', scale_units='xy',
-                      scale=self.k * 0.6, width=0.004)
+                      scale=self.k * 100, width=0.004)
         fig.colorbar(q, ax=ax, label='|F|  [N]')
 
-        self._draw_box(ax)
+        self._draw_circle(ax)
         ax.set_aspect('equal')
         ax.set_xlabel('x  [m]')
         ax.set_ylabel('y  [m]')
         ax.set_title(
             f'Force field  F = −∇U   center={tuple(self.center.round(4))}  '
-            f'half_width={w} m   k={self.k} N/m'
+            f'radius={r} m   k={self.k} N/m'
         )
         ax.legend(loc='upper right', fontsize=8)
         return fig, ax
 
     # ------------------------------------------------------------------
-    def _draw_box(self, ax):
-        """Overlay the box boundary and center marker on an existing Axes."""
+    def _draw_circle(self, ax):
+        """Overlay the circle boundary and center marker on an existing Axes."""
         cx, cy = self.center
-        w = self.w
-        rect = plt.Rectangle((cx - w, cy - w), 2*w, 2*w,
-                              edgecolor='lime', facecolor='none',
-                              linewidth=2, linestyle='--', label='wall')
-        ax.add_patch(rect)
+        circle = plt.Circle((cx, cy), self.r,
+                             edgecolor='lime', facecolor='none',
+                             linewidth=2, linestyle='--', label='wall')
+        ax.add_patch(circle)
         ax.plot(cx, cy, 'g+', markersize=10, label='center')
 
 
@@ -224,15 +217,15 @@ class BoxField:
 # Demo / self-test
 # ======================================================================
 if __name__ == '__main__':
-    field = BoxField(center=[0.10, 0.35], half_width=0.025, k=200.0)
+    field = CircleField(center=[0.10, 0.35], radius=0.025, k=200.0)
 
     print('--- Force spot-checks (callable interface) ---')
-    print(f'  center      (0.10, 0.35) → {field(0.10, 0.35)}   (expect [0, 0])')
-    print(f'  outside R   (0.13, 0.35) → {field(0.13, 0.35)}   (expect Fx < 0)')
-    print(f'  outside L   (0.07, 0.35) → {field(0.07, 0.35)}   (expect Fx > 0)')
-    print(f'  outside top (0.10, 0.38) → {field(0.10, 0.38)}   (expect Fy < 0)')
-    print(f'  outside bot (0.10, 0.32) → {field(0.10, 0.32)}   (expect Fy > 0)')
-    print(f'  corner      (0.13, 0.38) → {field(0.13, 0.38)}   (expect Fx<0, Fy<0)')
+    print(f'  center        (0.10, 0.35) → {field(0.10, 0.35)}   (expect [0, 0])')
+    print(f'  outside right (0.13, 0.35) → {field(0.13, 0.35)}   (expect Fx < 0)')
+    print(f'  outside left  (0.07, 0.35) → {field(0.07, 0.35)}   (expect Fx > 0)')
+    print(f'  outside top   (0.10, 0.38) → {field(0.10, 0.38)}   (expect Fy < 0)')
+    print(f'  outside bot   (0.10, 0.32) → {field(0.10, 0.32)}   (expect Fy > 0)')
+    print(f'  diagonal      (0.13, 0.38) → {field(0.13, 0.38)}   (expect Fx<0, Fy<0)')
 
     # plots=True saves field_energy.png and field_forces.png
     field(0.10, 0.35, plots=True)

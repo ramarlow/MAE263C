@@ -17,7 +17,7 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM10"
+PORT_DYN = "COM7"
 PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]

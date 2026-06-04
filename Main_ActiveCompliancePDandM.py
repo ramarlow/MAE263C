@@ -2,7 +2,7 @@ from dynamixel_sdk import *
 from forward_kinematics import forward_kinematics
 from kinematics import Jacobian, FK
 from operation_space_PID import PDController
-from potential_field import BoxField
+from potential_field import CircleField
 import numpy as np
 import dynamics, data_io
 import serial, serial.threaded
@@ -18,7 +18,7 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM10"
+PORT_DYN = "COM7"
 PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]
@@ -44,7 +44,7 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = BoxField(center=[0.10, 0.35], half_width=0.025, k=100.0) #k is position gain
+controller = CircleField(center=[0.10, 0.375], radius=0.025, k=1.5) #k is position gain
 
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
@@ -55,9 +55,9 @@ D = .200
 L1 = .220
 L2 = .250
 
-K_D = np.diag([1.0,1.0]) #Cartesian Velocity Damping
+K_D = np.diag([1,1]) #Cartesian Velocity Damping
 D_on = True #Boolean for derivative term on/off
-M_on = True #Boolean for mass matrix on/off
+M_on = False #Boolean for mass matrix on/off
 
 try:
     while 1:
