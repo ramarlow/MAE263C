@@ -11,20 +11,13 @@ Original file is located at
 #Paper: https://www.researchgate.net/publication/315996874_A_Parallel_Actuated_Pantograph_Leg_for_High-speed_Locomotion
 import numpy as np
 
-def compute_M(q,x,y,J):
+def compute_M(q,x,y,J,L1,L2,D,m1,m2):
   #x,y are end effector position, q is two active joint angles [q1,q2]
   #J is 2x2 jacobian at current configuration
 
   #Extracting Link geometry
-  L1 = a[1]
-  L2 = a[2]
-  D  = a[5]
-
   q1 = q[0]
   q4 = q[1]
-
-  m1 = m[0]
-  m2 = m[1]
 
   #Vectors from each elbow joint to end-effector
   dx1 = x-L1*np.cos(q1)
