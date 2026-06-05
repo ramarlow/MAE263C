@@ -18,7 +18,7 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM7"
+PORT_DYN = "COM10"
 PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]
@@ -77,10 +77,10 @@ try:
             angle_vel = ticks_to_deg(vel)/60 #ticks/min -> rad/min ->rad/s
 
             if id == 6:
-                theta2 = np.pi-angle
+                theta2 = -angle+2*np.pi
                 theta2_dot = -angle_vel
             else:
-                theta1 = 2*np.pi-angle
+                theta1 = -angle+2*np.pi
                 theta1_dot = -angle_vel
 
 
