@@ -1,49 +1,16 @@
-"""
-potential_field.py
-------------------
-Energy-based force fields for haptic rendering.
-
-The field is a scalar potential  U(x, y).
-Forces are derived as  F = -∇U,  guaranteeing the field never injects energy.
-
-Interior of the circle  →  U = 0      (flat valley, zero force)
-Outside the wall        →  U = k · p  where p is radial penetration depth
-                            F = k · (-r̂)  constant magnitude, directed radially inward
-
-Usage in Main.py
-----------------
-    from potential_field import CircleField
-    field = CircleField(center=[0.10, 0.35], radius=0.025, k=200.0)
-    ...
-    force = field(pos[0], pos[1])              # callable — returns np.array([Fx, Fy])
-    force = field(pos[0], pos[1], plots=True)  # same, and saves field_energy/forces.png
-"""
 
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')          # no GUI / no tkinter needed
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 
 
 class CircleField:
-    """
-    Circular potential-energy field centered at `center` with `radius`.
-
-    Parameters
-    ----------
-    center : array-like (2,)   center of the circle in metres
-    radius : float             radius of the safe zone in metres
-    k      : float             wall stiffness [N/m]
-    """
 
     def __init__(self, center, radius, k=200.0):
         self.center = np.asarray(center, dtype=float)
         self.r = float(radius)
         self.k = float(k)
-
-    # ------------------------------------------------------------------
-    # Core field functions (accept scalars or numpy arrays)
-    # ------------------------------------------------------------------
 
     def energy(self, x, y):
         """

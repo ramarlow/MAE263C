@@ -7,8 +7,6 @@ import numpy as np
 import dynamics, data_io
 import serial, serial.threaded
 from compute_m import compute_M
-import matplotlib.pyplot as plt
-from collections import deque
 
 class StoreLoads(serial.threaded.LineReader):
     def handle_line(self, line):
@@ -20,7 +18,7 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM10"
+PORT_DYN = "COM7"
 PORT_ARD = "COM13"
 BAUD = 57600
 IDS = [5, 6]
@@ -49,25 +47,6 @@ except:
 center = [0.10, 0.375]
 radius = 0.025
 controller = CircleField(center=center, radius=radius, k=2) #k is position gain
-
-N_HIST = 300
-pos_hist = deque(maxlen=N_HIST)
-force_hist = deque(maxlen=N_HIST)
-
-plt.ion()
-fig1, ax1 = plt.subplots(num='EE Position')
-line_ee, = ax1.plot([], [], 'b-', lw=1)
-dot_ee,  = ax1.plot([], [], 'ro', ms=6)
-ax1.set_xlabel('x (m)'); ax1.set_ylabel('y (m)')
-ax1.set_title('End Effector Position')
-ax1.set_aspect('equal'); ax1.grid(True)
-
-fig2, ax2 = plt.subplots(num='Desired Force')
-line_fx, = ax2.plot([], [], 'r-', label='Fx')
-line_fy, = ax2.plot([], [], 'b-', label='Fy')
-ax2.set_xlabel('Sample'); ax2.set_ylabel('Force (N)')
-ax2.set_title('Desired Force')
-ax2.legend(); ax2.grid(True)
 
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
@@ -113,18 +92,6 @@ try:
         # Each timestep, call:
         force = controller.update(x=pos[0], y=pos[1])
         # returns np.array([Fx, Fy])
-
-        pos_hist.append((pos[0], pos[1]))
-        force_hist.append(force.copy())
-        xs = [p[0] for p in pos_hist]; ys = [p[1] for p in pos_hist]
-        line_ee.set_data(xs, ys); dot_ee.set_data([xs[-1]], [ys[-1]])
-        ax1.relim(); ax1.autoscale_view()
-        t = range(len(force_hist))
-        line_fx.set_data(t, [f[0] for f in force_hist])
-        line_fy.set_data(t, [f[1] for f in force_hist])
-        ax2.relim(); ax2.autoscale_view()
-        fig1.canvas.draw_idle(); fig1.canvas.flush_events()
-        fig2.canvas.draw_idle(); fig2.canvas.flush_events()
 
         #Defining array for joint angular velocities
         theta_dot = np.array([theta1_dot,theta2_dot])
