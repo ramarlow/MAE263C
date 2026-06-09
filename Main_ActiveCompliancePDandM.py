@@ -46,6 +46,12 @@ except:
 
 controller = CircleField(center=[0.10, 0.375], radius=0.025, k=1.5) #k is position gain
 
+_N_CIRC = 60
+_circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
+_circ_xs = controller.center[0] + controller.r * np.cos(_circ_angles)
+_circ_ys = controller.center[1] + controller.r * np.sin(_circ_angles)
+_circ_idx = 0
+
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
     packet.write1ByteTxRx(port, id, 64, 1)   # torque enable
@@ -133,7 +139,10 @@ try:
                 'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
+                'circle_x':float(_circ_xs[_circ_idx % _N_CIRC]),
+                'circle_y':float(_circ_ys[_circ_idx % _N_CIRC]),
                 })
+        _circ_idx += 1
 finally:
     for id in IDS:
         packet.write2ByteTxRx(port, id, 100, 0)
