@@ -21,13 +21,13 @@ class CircleField:
         cx, cy = self.center
         dist = np.sqrt((x - cx)**2 + (y - cy)**2)
         p = np.maximum(0.0, dist - self.r)
-        return self.k * p   # U = k·p  (linear → constant-force wall)
+        return 0.5 * self.k * p**2   # U = ½k·p²  (quadratic → linear stiffness)
 
     def force(self, x, y):
         """
         2D force vector F = -∇U at (x, y) [N].
         Returns np.array([Fx, Fy]).
-        Inside the circle F = [0, 0]; outside, constant magnitude k radially inward.
+        Inside the circle F = [0, 0]; outside, F = -k·(dist - r) radially inward.
         """
         cx, cy = self.center
         dx, dy = x - cx, y - cy
@@ -35,7 +35,7 @@ class CircleField:
         if dist <= self.r or dist == 0.0:
             return np.array([0.0, 0.0])
         r_hat = np.array([dx, dy]) / dist
-        return -self.k * r_hat   # constant magnitude, radially inward
+        return -self.k * (dist - self.r) * r_hat   # linear stiffness: F = -k·p radially inward
 
     def __call__(self, x, y, plots=False):
         """
