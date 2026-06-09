@@ -44,7 +44,7 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = CircleField(center=[0.10, 0.375], radius=0.025, k=2) #k is position gain
+controller = CircleField(center=[0.10, 0.395], radius=0.025, k=200) #k is position gain
 
 _N_CIRC = 60
 _circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
