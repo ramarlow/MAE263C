@@ -18,7 +18,7 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM7"
+PORT_DYN = "COM10"
 PORT_ARD = "COM13"
 BAUD = 1e6
 IDS = [5, 6]
@@ -44,9 +44,13 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-center = [0.10, 0.375]
-radius = 0.025
-controller = CircleField(center=center, radius=radius, k=2) #k is position gain
+controller = CircleField(center=[0.10, 0.375], radius=0.025, k=2) #k is position gain
+
+_N_CIRC = 60
+_circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
+_circ_xs = controller.center[0] + controller.r * np.cos(_circ_angles)
+_circ_ys = controller.center[1] + controller.r * np.sin(_circ_angles)
+_circ_idx = 0
 
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
@@ -58,15 +62,14 @@ L2 = .250
 m1 = 50/1000 #kg
 m2 = 58.25/1000 #kg
 
-K_D = np.diag([1.5,1.5]) #Cartesian Velocity Damping
+K_D = np.diag([2,2]) #Cartesian Velocity Damping
 D_on = True #Boolean for derivative term on/off
 M_on = False #Boolean for mass matrix on/off
 
-idx=0
 
 try:
     while 1:
-        idx += 1
+        read_start = time
         for id in IDS:
             pos, _, _ = packet.read4ByteTxRx(port, id, 132)
             vel, _, _ = packet.read4ByteTxRx(port, id, 128)  # Velocity
@@ -139,9 +142,10 @@ try:
                 'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
-                'q1d':float(theta1_dot),'q2d':float(theta2_dot),
-                'bx':float(center[0]+radius*np.cos(0.01*idx)),'by':float(center[1]+radius*np.sin(0.01*idx))
+                'circle_x':-float(_circ_xs[_circ_idx % _N_CIRC]),
+                'circle_y':float(_circ_ys[_circ_idx % _N_CIRC]),
                 })
+        _circ_idx += 1
 finally:
     for id in IDS:
         packet.write2ByteTxRx(port, id, 100, 0)
