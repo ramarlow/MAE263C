@@ -44,7 +44,9 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = CircleField(center=[0.10, 0.375], radius=0.025, k=1.5) #k is position gain
+center = [0.10, 0.375]
+radius = 0.025
+controller = CircleField(center=center, radius=radius, k=2) #k is position gain
 
 for id in IDS:
     packet.write1ByteTxRx(port, id, 11, 16)  # PWM mode
@@ -56,7 +58,7 @@ L2 = .250
 m1 = 50/1000 #kg
 m2 = 58.25/1000 #kg
 
-K_D = np.diag([1,1]) #Cartesian Velocity Damping
+K_D = np.diag([1.5,1.5]) #Cartesian Velocity Damping
 D_on = True #Boolean for derivative term on/off
 M_on = False #Boolean for mass matrix on/off
 
@@ -125,7 +127,7 @@ try:
         packet.write2ByteTxRx(port, 5, 100, int(tau[0]*-K_PWM) & 0xFFFF)
         packet.write2ByteTxRx(port, 6, 100, int(tau[1]*-K_PWM) & 0xFFFF)
 
-        print(f'force:{force}, torques:{tau}, PWMs:{tau*K_PWM}')
+        # print(f'force:{force}, torques:{tau}, PWMs:{tau*K_PWM}')
         data_out.send({
                 'q1':float(theta1),'q2':float(theta2),              # joint angles
                 'ex':float(-pos[0]),'ey':float(pos[1]),             # fk ee pos
@@ -133,6 +135,7 @@ try:
                 'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
+                'q1d':float(theta1_dot),'q2d':float(theta2_dot),
                 })
 finally:
     for id in IDS:
