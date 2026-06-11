@@ -44,7 +44,7 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = CircleField(center=[0.10, 0.395], radius=0.025, k=200) #k is position gain
+controller = CircleField(center=[0.10, 0.395], radius=0.025, k=230) #k is position gain
 
 _N_CIRC = 60
 _circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
@@ -73,6 +73,7 @@ try:
         for id in IDS:
             pos, _, _ = packet.read4ByteTxRx(port, id, 132)
             vel, _, _ = packet.read4ByteTxRx(port, id, 128)  # Velocity
+            # tau, _, _ = packet.read2ByteTxRx(port, id, 126)
             
             # print(pos)
             if pos > 0x7FFFFFFF:
@@ -81,15 +82,20 @@ try:
             if vel > 0x7FFFFFFF: #Accounting for negative velocity
                 vel -= 0x100000000
 
+            #if tau > 0x7Fff:
+            #    tau -= 0x10000
+
             angle = ticks_to_deg(pos)
             angle_vel = ticks_to_deg(vel)/60 #ticks/min -> rad/min ->rad/s
 
             if id == 6:
                 theta2 = -angle+2*np.pi
                 theta2_dot = -angle_vel
+                # tau2 = -tau
             else:
                 theta1 = -angle+2*np.pi
                 theta1_dot = -angle_vel
+                # tau1 = -tau
 
 
         pos = forward_kinematics(theta1, theta2, L1, L2, D)
@@ -112,18 +118,18 @@ try:
                 M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix, second term avoids singularities
-                tau = J.T @ Lambda @ (force.T - K_D @ J @ theta_dot.T)
+                tau_des = J.T @ Lambda @ (force.T - K_D @ J @ theta_dot.T)
             else:
-                tau = J.T@(force.T-K_D@J@theta_dot.T)
+                tau_des = J.T@(force.T-K_D@J@theta_dot.T)
         else:
             if M_on:
                 #Calculating M matrix
                 M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix
-                tau = J.T @ Lambda @force.T
+                tau_des = J.T @ Lambda @force.T
             else:
-                tau = J.T@force.T
+                tau_des = J.T@force.T
 
 
         f_cells = -dynamics.F_ee(loads, np.array([theta1,theta2]))
@@ -131,17 +137,18 @@ try:
         K_PWM = 0.8
 
 
-        packet.write2ByteTxRx(port, 5, 100, int(tau[0]*-K_PWM) & 0xFFFF)
-        packet.write2ByteTxRx(port, 6, 100, int(tau[1]*-K_PWM) & 0xFFFF)
+        packet.write2ByteTxRx(port, 5, 100, int(tau_des[0]*-K_PWM) & 0xFFFF)
+        packet.write2ByteTxRx(port, 6, 100, int(tau_des[1]*-K_PWM) & 0xFFFF)
 
-        # print(f'force:{force}, torques:{tau}, PWMs:{tau*K_PWM}')
+        # print(f'force:{force}, torques:{tau_des}, PWMs:{tau_des*K_PWM}')
         data_out.send({
                 'q1':float(theta1),'q2':float(theta2),              # joint angles
                 'ex':float(-pos[0]),'ey':float(pos[1]),             # fk ee pos
                 'fx_des':float(-force[0]),'fy_des':float(force[1]), # desired ee force
-                'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
+                'tau_des1':float(tau_des[0]),'tau_des2':float(tau_des[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
+                # 'tau1':float(tau1),'tau2':float(tau2),
                 'circle_x':-float(_circ_xs[_circ_idx % _N_CIRC]),
                 'circle_y':float(_circ_ys[_circ_idx % _N_CIRC]),
                 })
