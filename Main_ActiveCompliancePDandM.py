@@ -46,7 +46,7 @@ except:
 
 controller = CircleField(center=[0.10, 0.395], radius=0.025, k=230) #k is position gain
 
-_N_CIRC = 60
+_N_CIRC = 60 # number of points to construct the circular boundary
 _circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
 _circ_xs = controller.center[0] + controller.r * np.cos(_circ_angles)
 _circ_ys = controller.center[1] + controller.r * np.sin(_circ_angles)
@@ -73,7 +73,7 @@ try:
         for id in IDS:
             pos, _, _ = packet.read4ByteTxRx(port, id, 132)
             vel, _, _ = packet.read4ByteTxRx(port, id, 128)  # Velocity
-            # tau, _, _ = packet.read2ByteTxRx(port, id, 126)
+            tau, _, _ = packet.read2ByteTxRx(port, id, 126)
             
             # print(pos)
             if pos > 0x7FFFFFFF:
@@ -82,8 +82,8 @@ try:
             if vel > 0x7FFFFFFF: #Accounting for negative velocity
                 vel -= 0x100000000
 
-            #if tau > 0x7Fff:
-            #    tau -= 0x10000
+            if tau > 0x7Fff:
+                tau -= 0x10000
 
             angle = ticks_to_deg(pos)
             angle_vel = ticks_to_deg(vel)/60 #ticks/min -> rad/min ->rad/s
@@ -91,11 +91,11 @@ try:
             if id == 6:
                 theta2 = -angle+2*np.pi
                 theta2_dot = -angle_vel
-                # tau2 = -tau
+                tau2 = -tau
             else:
                 theta1 = -angle+2*np.pi
                 theta1_dot = -angle_vel
-                # tau1 = -tau
+                tau1 = -tau
 
 
         pos = forward_kinematics(theta1, theta2, L1, L2, D)
@@ -133,6 +133,7 @@ try:
 
 
         f_cells = -dynamics.F_ee(loads, np.array([theta1,theta2]))
+        f_dyn = -dynamics.F_ee(np.array([tau1,tau2]), np.array([theta1,theta2]))*1.5
 
         K_PWM = 0.8
 
@@ -142,13 +143,18 @@ try:
 
         # print(f'force:{force}, torques:{tau_des}, PWMs:{tau_des*K_PWM}')
         data_out.send({
-                'q1':float(theta1),'q2':float(theta2),              # joint angles
+                'q1':np.rad2deg(float(theta1)),'q2':np.rad2deg(float(theta2)),              # joint angles
                 'ex':float(-pos[0]),'ey':float(pos[1]),             # fk ee pos
+                'er':float(np.linalg.norm(pos-controller.center)),
+                'r_ref':0.025,
                 'fx_des':float(-force[0]),'fy_des':float(force[1]), # desired ee force
+                'fr_des':float(np.linalg.norm(force)),
                 'tau_des1':float(tau_des[0]),'tau_des2':float(tau_des[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
-                # 'tau1':float(tau1),'tau2':float(tau2),
+                'tau1':float(tau1),'tau2':float(tau2),
+                'fx_dyn':float(f_dyn[0]),'fy_dyn':float(f_dyn[1]),'fr_dyn':float(np.linalg.norm(f_dyn)),
+                
                 'circle_x':-float(_circ_xs[_circ_idx % _N_CIRC]),
                 'circle_y':float(_circ_ys[_circ_idx % _N_CIRC]),
                 })
