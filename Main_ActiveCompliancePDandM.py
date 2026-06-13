@@ -18,9 +18,9 @@ class StoreLoads(serial.threaded.LineReader):
         # print(loads)
 
 data_out = data_io.UDP_Client()
-PORT_DYN = "COM7"
+PORT_DYN = "COM10"
 PORT_ARD = "COM13"
-BAUD = 57600
+BAUD = 1e6
 IDS = [5, 6]
 loads = np.zeros((2,))
 
@@ -44,9 +44,9 @@ except:
     print('no arduino connected, running without load cells')
     arduino = None
 
-controller = CircleField(center=[0.10, 0.375], radius=0.025, k=1.5) #k is position gain
+controller = CircleField(center=[0.10, 0.395], radius=0.025, k=230) #k is position gain
 
-_N_CIRC = 60
+_N_CIRC = 60 # number of points to construct the circular boundary
 _circ_angles = np.linspace(0, 2*np.pi, _N_CIRC, endpoint=False)
 _circ_xs = controller.center[0] + controller.r * np.cos(_circ_angles)
 _circ_ys = controller.center[1] + controller.r * np.sin(_circ_angles)
@@ -62,15 +62,18 @@ L2 = .250
 m1 = 50/1000 #kg
 m2 = 58.25/1000 #kg
 
-K_D = np.diag([1,1]) #Cartesian Velocity Damping
+K_D = np.diag([2,2]) #Cartesian Velocity Damping
 D_on = True #Boolean for derivative term on/off
 M_on = False #Boolean for mass matrix on/off
 
+
 try:
     while 1:
+        read_start = time
         for id in IDS:
             pos, _, _ = packet.read4ByteTxRx(port, id, 132)
             vel, _, _ = packet.read4ByteTxRx(port, id, 128)  # Velocity
+            tau, _, _ = packet.read2ByteTxRx(port, id, 126)
             
             # print(pos)
             if pos > 0x7FFFFFFF:
@@ -79,15 +82,20 @@ try:
             if vel > 0x7FFFFFFF: #Accounting for negative velocity
                 vel -= 0x100000000
 
+            if tau > 0x7Fff:
+                tau -= 0x10000
+
             angle = ticks_to_deg(pos)
             angle_vel = ticks_to_deg(vel)/60 #ticks/min -> rad/min ->rad/s
 
             if id == 6:
                 theta2 = -angle+2*np.pi
                 theta2_dot = -angle_vel
+                tau2 = -tau
             else:
                 theta1 = -angle+2*np.pi
                 theta1_dot = -angle_vel
+                tau1 = -tau
 
 
         pos = forward_kinematics(theta1, theta2, L1, L2, D)
@@ -110,36 +118,44 @@ try:
                 M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix, second term avoids singularities
-                tau = J.T @ Lambda @ (force.T - K_D @ J @ theta_dot.T)
+                tau_des = J.T @ Lambda @ (force.T - K_D @ J @ theta_dot.T)
             else:
-                tau = J.T@(force.T-K_D@J@theta_dot.T)
+                tau_des = J.T@(force.T-K_D@J@theta_dot.T)
         else:
             if M_on:
                 #Calculating M matrix
                 M = compute_M(np.array([theta1, theta2]),pos[0],pos[1],J,L1,L2,D,m1,m2)
                 M_inv = np.linalg.inv(M)
                 Lambda = np.linalg.inv(J @ M_inv @ J.T+ 0.001 * np.eye(2)) #Task space mass matrix
-                tau = J.T @ Lambda @force.T
+                tau_des = J.T @ Lambda @force.T
             else:
-                tau = J.T@force.T
+                tau_des = J.T@force.T
 
 
         f_cells = -dynamics.F_ee(loads, np.array([theta1,theta2]))
+        f_dyn = -dynamics.F_ee(np.array([tau1,tau2]), np.array([theta1,theta2]))*1.5
 
         K_PWM = 0.8
 
-        packet.write2ByteTxRx(port, 5, 100, int(tau[0]*-K_PWM) & 0xFFFF)
-        packet.write2ByteTxRx(port, 6, 100, int(tau[1]*-K_PWM) & 0xFFFF)
 
-        print(f'force:{force}, torques:{tau}, PWMs:{tau*K_PWM}')
+        packet.write2ByteTxRx(port, 5, 100, int(tau_des[0]*-K_PWM) & 0xFFFF)
+        packet.write2ByteTxRx(port, 6, 100, int(tau_des[1]*-K_PWM) & 0xFFFF)
+
+        # print(f'force:{force}, torques:{tau_des}, PWMs:{tau_des*K_PWM}')
         data_out.send({
-                'q1':float(theta1),'q2':float(theta2),              # joint angles
+                'q1':np.rad2deg(float(theta1)),'q2':np.rad2deg(float(theta2)),              # joint angles
                 'ex':float(-pos[0]),'ey':float(pos[1]),             # fk ee pos
+                'er':float(np.linalg.norm(pos-controller.center)),
+                'r_ref':0.025,
                 'fx_des':float(-force[0]),'fy_des':float(force[1]), # desired ee force
-                'tau1':float(tau[0]),'tau2':float(tau[1]),          # desired joint torques
+                'fr_des':float(np.linalg.norm(force)),
+                'tau_des1':float(tau_des[0]),'tau_des2':float(tau_des[1]),          # desired joint torques
                 'f1':float(loads[0]),'f2':float(loads[1]),          # load cell readings
                 'fx_cell':float(f_cells[0]),'fy_cell':float(f_cells[1]), # transformed load cell readings
-                'circle_x':float(_circ_xs[_circ_idx % _N_CIRC]),
+                'tau1':float(tau1),'tau2':float(tau2),
+                'fx_dyn':float(f_dyn[0]),'fy_dyn':float(f_dyn[1]),'fr_dyn':float(np.linalg.norm(f_dyn)),
+                
+                'circle_x':-float(_circ_xs[_circ_idx % _N_CIRC]),
                 'circle_y':float(_circ_ys[_circ_idx % _N_CIRC]),
                 })
         _circ_idx += 1
