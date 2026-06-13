@@ -13,22 +13,14 @@ class CircleField:
         self.k = float(k)
 
     def energy(self, x, y):
-        """
-        Scalar potential energy U(x, y) [J].
-        Accepts scalars or same-shape numpy arrays (useful for plotting).
-        """
         x, y = np.asarray(x, float), np.asarray(y, float)
         cx, cy = self.center
         dist = np.sqrt((x - cx)**2 + (y - cy)**2)
         p = np.maximum(0.0, dist - self.r)
-        return 0.5 * self.k * p**2   # U = ½k·p²  (quadratic → linear stiffness)
+        return 0.5 * self.k * p**2   # U = ½k·p²  
 
     def force(self, x, y):
-        """
-        2D force vector F = -∇U at (x, y) [N].
-        Returns np.array([Fx, Fy]).
-        Inside the circle F = [0, 0]; outside, F = -k·(dist - r) radially inward.
-        """
+    
         cx, cy = self.center
         dx, dy = x - cx, y - cy
         dist = np.sqrt(dx**2 + dy**2)
@@ -38,55 +30,30 @@ class CircleField:
         return -self.k * (dist - self.r) * r_hat   # linear stiffness: F = -k·p radially inward
 
     def __call__(self, x, y, plots=False):
-        """
-        Evaluate the force at (x, y) and optionally save field plots.
-
-        Parameters
-        ----------
-        x, y  : float   end-effector position [m]
-        plots : bool    if True, save field_energy.png and field_forces.png
-
-        Returns
-        -------
-        np.array([Fx, Fy])  [N]
-        """
+     
         f = self.force(x, y)
         if plots:
             fig_e, _ = self.plot_energy()
             fig_e.tight_layout()
             fig_e.savefig('field_energy.png', dpi=150)
             plt.close(fig_e)
-            print('Saved → field_energy.png')
+            print('Saved field_energy.png')
 
             fig_f, _ = self.plot_forces()
             fig_f.tight_layout()
             fig_f.savefig('field_forces.png', dpi=150)
             plt.close(fig_f)
-            print('Saved → field_forces.png')
+            print('Saved field_forces.png')
         return f
 
     def update(self, x, y):
-        """Drop-in replacement for PDController.update(x, y)."""
         return self.force(x, y)
 
-    # ------------------------------------------------------------------
     # Visualisation
-    # ------------------------------------------------------------------
+   
 
     def plot_energy(self, ax=None, xlim=None, ylim=None, n=100):
-        """
-        Colour-map of the scalar energy field U(x, y).
-
-        Parameters
-        ----------
-        ax         : existing matplotlib Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3x radius around center
-        n          : grid resolution
-
-        Returns
-        -------
-        fig, ax - energy colour-map figure
-        """
+        
         cx, cy = self.center
         r = self.r
         pad = 3.0 * r
@@ -119,19 +86,7 @@ class CircleField:
 
     # ------------------------------------------------------------------
     def plot_forces(self, ax=None, xlim=None, ylim=None, n=24):
-        """
-        2-D quiver plot of F = -∇U on an nxn grid.
-
-        Parameters
-        ----------
-        ax         : existing Axes, or None to create a new figure
-        xlim, ylim : (min, max) tuples; default = 3x radius around center
-        n          : quiver grid resolution (arrows per axis)
-
-        Returns
-        -------
-        fig, ax - force quiver figure
-        """
+    
         cx, cy = self.center
         r = self.r
         pad = 3.0 * r
@@ -171,7 +126,6 @@ class CircleField:
 
     # ------------------------------------------------------------------
     def _draw_circle(self, ax):
-        """Overlay the circle boundary and center marker on an existing Axes."""
         cx, cy = self.center
         circle = plt.Circle((cx, cy), self.r,
                              edgecolor='lime', facecolor='none',
@@ -180,9 +134,6 @@ class CircleField:
         ax.plot(cx, cy, 'g+', markersize=10, label='center')
 
 
-# ======================================================================
-# Demo / self-test
-# ======================================================================
 if __name__ == '__main__':
     field = CircleField(center=[0.10, 0.35], radius=0.025, k=200.0)
 
